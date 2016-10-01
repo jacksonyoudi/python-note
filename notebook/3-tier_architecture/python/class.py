@@ -1025,7 +1025,7 @@ class Employee(object):
 通过已有的类生成新的类
 
 例子：
-#!/usr/bin/env python
+# !/usr/bin/env python
 # coding: utf8
 
 class Employee(object):
@@ -1060,18 +1060,300 @@ if __name__ == '__main__':
         member.giveRaise(0.1)
         print member
 输出：
-root@VM-166-182-ubuntu:~/python/notebook# python -i object9.py
+root @ VM - 166 - 182 - ubuntu:~ / python / notebook  # python -i object9.py
+[Employee:xiaoli, sw_engince, 11000]
+[Employee:xiaowang, hw_engince, 13200]
+[Employee:xiaozhang, mgr, 9600]
+>> > c.__class__
+< class '__main__.Manager'>
+
+>> > c.__class__.__base__
+< class '__main__.Employee'>
+
+>> > c.__class__.__base__.__base__
+< type
+'object' >
+>> > c.__class__.__base__.__base__.__base__
+>> >
+
+多重继承
+
+例子：
+经典类
+#!/usr/bin/env python
+# coding: utf8
+
+class A:
+    a = 1
+    b = 1
+
+
+class B(A):
+    a = 2
+
+
+class C(A):
+    a = 3
+    b = 3
+    c = 3
+
+
+class D(B, C):
+    pass
+
+
+if __name__ == '__main__':
+    d = D()
+
+结果：
+root@VM-166-182-ubuntu:~/python/notebook# python -i object10.py
+>>> d.a
+2
+>>> d.b
+1
+>>> d.c
+3
+>>> import inspect
+>>> inspect.getmro(D)
+(<class __main__.D at 0x7f735d9d8460>, <class __main__.B at 0x7f735d9d8390>, <class __main__.A at 0x7f735d9d8328>, <class __main__.C at 0x7f735d9d83f8>)
+
+其中：MRO
+mro:method Resolution order  方法解析顺序
+
+classic :深度优先
+New： 广度优先
+
+
+新式类
+
+#!/usr/bin/env python
+# coding: utf8
+
+class A(object):
+    a = 1
+    b = 1
+
+
+class B(A):
+    a = 2
+
+
+class C(A):
+    a = 3
+    b = 3
+    c = 3
+
+
+class D(B, C):
+    pass
+
+
+if __name__ == '__main__':
+    d = D()
+结果：
+root@VM-166-182-ubuntu:~/python/notebook# python -i object10.py
+>>> d.b
+3
+>>> d.a
+2
+>>> d.c
+3
+>>> import inspect
+>>> inspect.getmro(D)
+(<class '__main__.D'>, <class '__main__.B'>, <class '__main__.C'>, <class '__main__.A'>, <type 'object'>)
+>>> D.__mro__
+(<class '__main__.D'>, <class '__main__.B'>, <class '__main__.C'>, <class '__main__.A'>, <type 'object'>)
+
+
+super用途
+
+
+砖石继承，菱形继承
+
+例子：
+#!./usr/bin/env python
+# coding: utf8
+
+class A:
+    def test(self):
+        print "A's test"
+class B(A):
+    def test(self):
+        print "B's test"
+        A.test(self)
+
+class C(A):
+    def test(self):
+        print "C's test"
+        A.test(self)
+
+class D(B,C):
+    def test(self):
+        print "D's test"
+        B.test(self)
+        C.test(self)
+
+if __name__ == '__main__':
+    a = D()
+    a.test()
+结果：
+D's test
+B's test
+A's test
+C's test
+A's test
+
+
+提示，只有在新式类中才有 class.__mro__
+
+super用途
+避免父类的方法重复调用
+
+super是一个类，不是函数
+super(D,self).test 返回一个对象或一个类
+
+例子：
+#!./usr/bin/env python
+# coding: utf8
+
+class A(object):
+    def test(self):
+        print "A's test"
+
+
+class B(A):
+    def test(self):
+        print "B's test"
+        super(B, self).test()
+
+
+class C(A):
+    def test(self):
+        print "C's test"
+        super(C, self).test()
+
+
+class D(B, C):
+    def test(self):
+        print "D's test"
+        super(D, self).test()
+
+
+if __name__ == '__main__':
+    a = D()
+    a.test()
+
+结果：
+root@VM-166-182-ubuntu:~/python/notebook# python -i object12.py
+D's test
+B's test
+C's test
+A's test
+
+提示：
+单一继承使用，父类名引用
+多重继承使用super
+
+
+组合：（包含的关系）
+用已有类生成新的类的方法
+
+和继承的区别：
+has a 和 is a 的区别
+
+例子：
+#!/usr/bin/env python
+# coding: utf8
+
+class Employee(object):
+    def __init__(self, name, job=None, pay=0):
+        self._name = name
+        self._job = job
+        self._pay = pay
+
+    def giveRaise(self, percent):
+        self._pay = int(self._pay * (1 + percent))
+
+    def __str__(self):
+        return '[Employee:%s,%s,%s]' % (self._name, self._job, self._pay)
+
+
+class Manager(Employee):
+    def __init__(self, name, pay):
+        Employee.__init__(self, name, 'mgr', pay)
+
+    def giveRaise(self, percent, bonus=.10):
+        Employee.giveRaise(self, percent + bonus)
+
+
+class Department(object):
+    def __init__(self, *args):
+        self.members = list(args)
+
+    def addMember(self, person):
+        self.members.append(person)
+
+    def showAll(self):
+        for person in self.members:
+            print person
+
+    def giveRaise(self, percent):
+        for person in self.members:
+            person.giveRaise(percent)
+
+
+if __name__ == '__main__':
+    a = Employee("xiaoli", "sw_engince", 10000)
+    b = Employee("xiaowang", "hw_engince", 12000)
+    c = Manager("xiaozhang", 8000)
+
+    d = Department(a, b, c)
+
+    d.showAll()
+    d.giveRaise(0.1)
+    d.showAll()
+结果：
+[Employee:xiaoli,sw_engince,10000]
+[Employee:xiaowang,hw_engince,12000]
+[Employee:xiaozhang,mgr,8000]
 [Employee:xiaoli,sw_engince,11000]
 [Employee:xiaowang,hw_engince,13200]
 [Employee:xiaozhang,mgr,9600]
->>> c.__class__
-<class '__main__.Manager'>
->>> c.__class__.__base__
-<class '__main__.Employee'>
->>> c.__class__.__base__.__base__
-<type 'object'>
->>> c.__class__.__base__.__base__.__base__
->>>
+
+
+多态：
+
+和重载概念的区别：
+
+多态是不同类的相同方法，相同参数，不同功能。调用时便于将一组对象放在集合里，无需判断对象的具体类型，统一调用。
+
+重载：相同方法的不同参数类型，对象python是args,kwargs。
+
+里氏代换原则：
+父类出现的地方，子类一定可以出现，反之，不一定。
+
+
+运算符重载
+
+分类：
++，-，* ，/
+__add__
+__sub__
+__mul__
+__div__
+
+Bool， __bool__
+
+Compare
+__lt__,__gt__
+
+Sort
+__cmp__
+
+__contains__: if a in c
+
+
+
 
 
 
