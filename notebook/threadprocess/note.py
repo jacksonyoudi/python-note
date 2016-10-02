@@ -318,3 +318,75 @@ for i in range(100):
     t = threading.Thread(target=run, args=(i,))
     t.start()
 
+解决方法：
+使用Rlock()
+允许自己调用多次锁
+
+
+
+
+线程安全
+
+lock
+Rlock
+samph
+event
+
+
+生产者消费者模型
+解耦
+支持并发
+支持忙闲不均
+
+
+paramiko
+
+
+
+多进程
+paramiko
+审计开发
+select异步模型
+
+多进程解决GIL的问题
+充分利用多核的优势
+
+from multiprocessing import Pool
+
+def f(x):
+    return x*x
+
+if __name__ == '__main__':
+    p = Pool(5)
+    print p.map(f,[1,2,3])
+
+
+
+
+from multiprocessing import Process
+import os
+
+def info(title):
+    print title
+    print 'module name',__name__
+    if hasattr(os,'getppid'):
+        print 'parent process:',os.getpid
+    print 'process id:',os.getppid()
+
+def f(name):
+    info('function f')
+    print 'hello',name
+
+if __name__ == '__main__':
+    info('main line')
+    print '--------------'
+    p = Process(target=info,args=(''))
+    p.start()
+    p.join()
+
+
+
+import os
+
+os.getpid()
+os.getppid()

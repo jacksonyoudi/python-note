@@ -3,9 +3,9 @@
 
 import paramiko
 
-hostname = '139.129.47.28'
-username = 'root'
-password = '18684541304@youdi'
+hostname = '*****'
+username = '*****'
+password = '****'
 paramiko.util.log_to_file('syslogin.log')  # 发送paramiko日志到syslogin.log文件
 
 ssh = paramiko.SSHClient()  # 创建一个ssh客户端client
