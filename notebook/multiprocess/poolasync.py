@@ -25,4 +25,4 @@ for i in res_list:
     print i.get()
 
 
-# pool.apply()  同步的方式 
+# pool.apply()  同步的方式

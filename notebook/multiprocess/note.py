@@ -21,3 +21,6 @@ if __name__ == '__main__':
 
     print num.value
     print arr[:]
+
+
+进程池
