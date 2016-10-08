@@ -7,19 +7,16 @@ Mac下搭建wxpython环境
 准备工作
 windows下安装wxpython
 
-
 如何确定python的位数？
 python可以直接查看
 
-
 wxpython的安装：
-1.next
-
+1.
+next
 
 什么是可视化编程
 可视化编程常用工具
 可视化编程的实现
-
 
 什么是可视化编程？
 在GUI编程中，我们可以通过写代码的方式来创建相应的图形界面，同样，也可以直接使用图形界面可视化开发出图形界面
@@ -30,12 +27,11 @@ wxpython的安装：
 
 可视化编程工具：
 wxFormBuilder
-wxDesigner,gui2py,
-
+wxDesigner, gui2py,
 
 简单的窗口
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 # coding: utf8
 # author: youdi
 
@@ -87,10 +83,9 @@ if __name__ == '__main__':
     f1.Show()
     app.MainLoop()
 
-
 菜单：
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 # coding: utf8
 # author: youdi
 
@@ -258,3 +253,141 @@ if __name__ == '__main__':
     f1 = XbFrame1(None)
     f1.Show()
     app.MainLoop()
+
+wxpython介绍
+wxpython是wxWidgets在python语言下的封装
+wxWidgets是一个跨平台的GUI应用程序编程接口，使用C + +编写的。
+所想即所得，缺乏成熟的IDE
+图形界面风格与系统的风格相似
+
+为什么选择wxPython而不是pyQt？
+协议：封闭
+编码风格
+复杂性
+个人习惯
+
+基本空间介绍
+绝对布局
+
+基本控件：
+静态文本：wx.StaticText
+文本域：wx.TextCtrl
+按钮：wx.Button
+单选框与复选框：wx.CheckBox / wx.RadioBox
+列表框： wx.ListBox
+图片：wx.Image
+
+绝对布局
+基于控件的坐标摆放控件
+简单直观
+方法单一
+不能随窗口的改变而调整位置
+
+button = wx.Bottom(parent=panel, label=u'这是按钮', pos=(50, 50))
+其中位置
+pos = (1, 2)
+size, 大小
+
+# !/usr/bin/env python
+# coding: utf8
+# author: youdi
+
+import wx
+
+
+# app = wx.App()
+# frame = wx.Frame(None, -1, u'GUI学习')
+# frame.Show()
+# app.MainLoop()
+
+class MyFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, parent=None, id=-1, title=u'GUI学习', size=(600, 600))
+        panel = wx.Panel(self, -1)
+        self.Centre()
+
+        button = wx.Button(panel, id=-1, label=u'这是按钮', pos=(50, 50))
+        statictext = wx.StaticText(parent=panel, id=-1, label=u'这是静态文本框', pos=(20, 100))
+        text = wx.TextCtrl(panel, -1, u'这是文本', pos=(200, 210))
+        password = wx.TextCtrl(panel, -1, u'输入密码', style=wx.TE_PASSWORD, pos=(200, 250))
+        mutiText = wx.TextCtrl(panel, -1, u'请输入多行内容', style=wx.TE_MULTILINE, pos=(100, 300))
+        checkBox1 = wx.CheckBox(panel, -1, u'这是复选框1', pos=(150, 20))
+        checkBox2 = wx.CheckBox(panel, -1, u'这是复选框1', pos=(150, 40))
+
+        radio1 = wx.RadioButton(panel, -1, u'这是单选框1', pos=(150, 60), style=wx.RB_GROUP)
+        radio2 = wx.RadioButton(panel, -1, u'这是单选框2', pos=(150, 60))
+        radio3 = wx.RadioButton(panel, -1, u'这是单选框3', pos=(150, 60))
+
+        radiolist = [u'一组单选按钮1', u'一组单选按钮2', u'一组单选按钮3']
+        wx.RadioBox(panel, -1, u'一组单选按钮', (10, 120), wx.DefaultSize, radiolist, 2, wx.RA_SPECIFY_COLS)
+
+        tuxinghua = [u'图', u'形', u'化', u'篇', '1', '2', '3', '4', '5', '6']
+        listbox = wx.ListBox(panel, -1, pos=(300, 20), size=(100, 100), choices=tuxinghua, style=wx.LB_SINGLE)
+
+        img = wx.Image(r'../img/5.jpg', wx.BITMAP_TYPE_ANY).Scale(200, 200)
+        sb1 = wx.StaticBitmap(panel, -1, wx.BitmapFromImage(img), pos=(300, 300))
+
+
+if __name__ == '__main__':
+    app = wx.App()
+    frame = MyFrame()
+    frame.Show()
+    app.MainLoop()
+
+控件相对布局：
+    BoxSizer管理布局
+    GridSize管理布局
+    FlexGridSize管理布局
+    GridBagSize管理布局
+
+BoxSizer管理布局
+    一行一列，可以选择行扩展或者列扩展
+
+GridSize管理布局
+    多行多列，每一格大小相等
+
+FlexGridSizer管理布局
+    多行多列，同一行高度相等，同一列宽度相等
+
+GridBagSizer管理布局
+    多行多列，每个单元格均能长宽随意，还可以跨行跨列
+
+多线程与事件
+
+python多线程
+    不使用多线程可能会导致图形界面卡死
+    多线程可以使程序以更高的效率运行
+    多线程可以让程序做更多事情
+    thread.start_new_thread(函数名，(参数1，参数2))
+    使用threading模块创建线程
+
+控件的事件：
+    按钮点击
+    文本域内容的改变
+    鼠标滑过
+    鼠标双击
+    键盘按下
+    ....
+
+
+python编写图形界面的程序
+能与程序上面的控件进行交互
+程序不会卡死
+程序控件的布局不会因为界面的大小改变而混乱
+
+
+
+
+wx
+
+import wx
+# 每个wxPython的程序必须有一个wx.App对象
+app = wx.App()  # default is False,当为Ture的时候，错误和输出都输出到窗口，false输出到控制台
+
+frame = wx.Frame(None,-1,title="hello,World",pos=(300,400),size=(200,150))
+# frame.Centre()
+frame.Show()
+
+# 进入循环，等待响应
+app.Main()
+
