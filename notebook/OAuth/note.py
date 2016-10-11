@@ -87,3 +87,72 @@ url参数中主要包含如下信息：
 
 
 开发者注册与应用创建
+注册平台账号
+申请成为开发者
+创建网站接入类型应用  获取apikey，secretKey等信息（身份和密钥）
+设置回调URL  获取回调地址 redirect uri信息
+开发测试
+提交审核，应用上线
+
+
+http://developer.baidu.com/wiki/index.php?title=docs/oauth/application
+
+
+
+1. 引导用户到如下地址进行授权：
+http://openapi.baidu.com/oauth/2.0/authorize?
+	response_type=code&
+	client_id=YOUR_CLIENT_ID&
+	redirect_uri=YOUR_REGISTERED_REDIRECT_URI&
+	scope=email&
+	display=popup
+
+其中：client_id=APikey
+redirect_uri='回调地址'
+
+2. 如果用户同意授权,页面跳转至 YOUR_REGISTERED_REDIRECT_URI/?code=CODE 。
+3. 换取Access Token。
+
+请求：
+https://openapi.baidu.com/oauth/2.0/token?
+	grant_type=authorization_code&
+	code=CODE&
+	client_id=YOUR_CLIENT_ID&
+	client_secret=YOUR_CLIENT_SECRET&
+	redirect_uri=YOUR_REGISTERED_REDIRECT_URI
+
+返回：
+{
+    "access_token": "1.a6b7dbd428f731035f771b8d15063f61.86400.1292922000-2346678-124328",
+    "expires_in": 86400,
+    "refresh_token": "2.385d55f8615fdfd9edb7c4b5ebdc3e39.604800.1293440400-2346678-124328",
+    "scope": "basic email",
+    "session_key": "ANXxSNjwQDugf8615OnqeikRMu2bKaXCdlLxn",
+    "session_secret": "248APxvxjCZ0VEC43EYrvxqaK4oZExMB",
+}
+
+获取用户信息：
+#获取当前登录用户的信息
+返回当前登录用户的用户名、用户uid、用户头像。
+passport/users/getLoggedInUser
+
+
+
+Oauth2.0的原理
+概述
+Oauth几种授权模式
+授权码模式
+
+Oauth（开放授权）是一个正式的互联网标准协议。在不需要用户名和密码的，从第三方服务商那里获取用户资源信息。
+允许第三方网站在用户授权的前提下访问用户在服务商那里存储的各种信息。而这种授权无序江永提供用户名和密码给第三方网站。
+Oauth允许用户提供一个令牌给第三方网站，一个令牌对应一个特定的第三方网站，同时该令牌只能在特定的时间内访问特定的资源。
+授权模式
+授权码模式(authorization code): 不通过用户浏览器
+简化模式(implicit)：没有C,D步骤
+密码模式(resource ownwer password credenttials)
+客户端模式(client credentials)
+
+授权码模式是功能最完全的，流程最为严密的授权模式
+简化模式不通过第三方应用程序的服务器，直接在浏览器中向认证服务器申请令牌，跳过了授权码这个步骤
+密码模式需要用户向客户端提供自己的用户名和密码
+客户端模式指客户端以自己的名义，而不是用户的名义，向“服务器提供商”进行认证
