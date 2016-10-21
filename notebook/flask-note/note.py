@@ -1377,6 +1377,625 @@ upgrade 命令能把改动应用到数据库中，且不影响其中保存的数
 
 
 
+第六章  电子邮件
+
+pip  install flask-mail
+
+配　　置默认值说　　明
+MAIL_SERVER     localhost 电子邮件服务器的主机名或IP 地址
+MAIL_PORT    25 电子邮件服务器的端口
+MAIL_USE_TLS    False 启用传输层安全（Transport Layer Security，TLS）协议
+MAIL_USE_SSL    False 启用安全套接层（Secure Sockets Layer，SSL）协议
+MAIL_USERNAME   None 邮件账户的用户名
+MAIL_PASSWORD   None 邮件账户的密码
+
+app = Flask(__name__)
+app.Configure['MaIL_SERVER'] = 'smtp.googlemail.com'
+app.Configure['Mail_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNMAE')
+app.Config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+
+
+from flask_mail import Mail
+mail = Mail(app)
+
+
+保存电子邮件服务器用户名和密码的两个环境变量要在环境中定义。如果你在Linux 或
+Mac OS X 中使用bash，那么可以按照下面的方式设定这两个变量：
+在Python shell中发送电子邮件
+你可以打开一个shell 会话，发送一封测试邮件，以检查配置是否正确：
+(venv) $ python hello.py shell
+>>> from flask.ext.mail import Message
+>>> from hello import mail
+>>> msg = Message('test subject', sender='you@example.com',
+... recipients=['you@example.com'])
+>>> msg.body = 'text body'
+>>> msg.html = '<b>HTML</b> body'
+>>> with app.app_context():
+... mail.send(msg)
+...
+
+
+第七章 大型程序的结构
+
+采用包和模板组织大型程序的方式。
+
+示例7-1　多文件Flask 程序的基本结构
+|-flasky
+    |-app/
+        |-templates/
+        |-static/
+        |-main/
+            |-__init__.py
+            |-errors.py
+            |-forms.py
+            |-views.py
+        |-__init__.py
+        |-email.py
+        |-models.py
+    |-migrations/
+    |-tests/
+        |-__init__.py
+        |-test*.py
+    |-venv/
+    |-requirements.txt
+    |-config.py
+    |-manage.py
+
+manage.py用于启动程序以及其他的程序任务
+
+7.2　配置选项
+
+程序经常需要设定多个配置。最好的例子就是开发，生产，测试环境要使用不同的数据库，这样才能不会彼此影响。
+
+config.py
+
+import os
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard to guess string'
+    SQLALCHEMY_COMMIT_ON_TEARDOWN = True
+    FLASK_MAIL_SUBJECT_PREFIX = '[Flasky]'
+    FLASK_MAIL_SENER = ''
+    FLASK_ADMIN = os.environ.get('FLASY_ADMIN')
+
+    @staticmethod
+    def init_app(app):
+        pass
+
+class DevelopmentConfig(config):
+    DEBUG = True
+    MAIL_SERVER = ''
+    MAIL_PORT = 587
+    MIAL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MIAL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    SQLAlCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL')
+    'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
+
+class Testingconfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
+
+class ProductionConfig(Config):
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or
+    'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+
+config = {
+    'development': DevelopmentConfig,
+    'testing':Testingconfig,
+    'production':ProductionConfig,
+    'default':DevelopmentConfig
+}
+
+基类Config 中包含通用配置，子类分别定义专用的配置。如果需要，你还可添加其他配
+置类。
+为了让配置方式更灵活且更安全，某些配置可以从环境变量中导入。例如，SECRET_KEY 的值，
+这是个敏感信息，可以在环境中设定，但系统也提供了一个默认值，以防环境中没有定义。
+
+在3 个子类中，SQLALCHEMY_DATABASE_URI 变量都被指定了不同的值。这样程序就可在不同
+的配置环境中运行，每个环境都使用不同的数据库。
+
+配置类可以定义init_app() 类方法，其参数是程序实例。在这个方法中，可以执行对当前
+环境的配置初始化。现在，基类Config 中的init_app() 方法为空。
+
+7.3 程序包
+
+程序包用来保存程序的所有代码，模板和静态文件。我们可以直接把这个包称为app(应用)，如果有需求，也可以使用一个程序的专用名字。
+templates和static文件夹是程序包的一部分，因此这两个文件夹移到app中。数据库模型和电子邮件支持函数也被移到了这个包中，分别
+保存在app/models.py和app/email.py
+
+7.3.1　使用程序工厂函数
+在单个文件中开发程序很方便，但却有个很大的缺点，因为程序在全局作用域中创建，所
+以无法动态修改配置。运行脚本时，程序实例已经创建，再修改配置为时已晚。这一点对
+单元测试尤其重要，因为有时为了提高测试覆盖度，必须在不同的配置环境中运行程序。
+这个问题的解决方法是延迟创建程序实例，把创建过程移到可显式调用的工厂函数中。这
+种方法不仅可以给脚本留出配置程序的时间，还能够创建多个程序实例，这些实例有时在
+测试中非常有用。程序的工厂函数在app 包的构造文件中定义，如示例7-3 所示。
+
+构造文件导入了大多数正在使用的Flask 扩展。由于尚未初始化所需的程序实例，所以没
+有初始化扩展，创建扩展类时没有向构造函数传入参数。create_app() 函数就是程序的工
+厂函数，接受一个参数，是程序使用的配置名。配置类在config.py 文件中定义，其中保存
+的配置可以使用Flask app.config 配置对象提供的from_object() 方法直接导入程序。至
+于配置对象，则可以通过名字从config 字典中选择。程序创建并配置好后，就能初始化
+扩展了。在之前创建的扩展对象上调用init_app() 可以完成初始化过程。
+
+示例7-3　app/__init__.py：程序包的构造文件
+from flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+def create_app(config_name):
+    app = Flask(__name__)
+    app.config.from_object(config[config_name])
+    config[config_name].init_app(app)
+    bootstrap.init_app(app)
+    mail.init_app(app)
+    moment.init_app(app)
+    db.init_app(app)
+    # 附加路由和自定义的错误页面
+    return app
+
+
+7.3.2　在蓝本中实现程序功能
+转换成程序工厂函数的操作让定义路由变复杂了。在单脚本程序中，程序实例存在于全
+局作用域中，路由可以直接使用app.route 修饰器定义。但现在程序在运行时创建，只
+有调用create_app() 之后才能使用app.route 修饰器，这时定义路由就太晚了。和路由
+一样，自定义的错误页面处理程序也面临相同的困难，因为错误页面处理程序使用app.
+errorhandler 修饰器定义。
+幸好Flask 使用蓝本提供了更好的解决方法。蓝本和程序类似，也可以定义路由。不同的
+是，在蓝本中定义的路由处于休眠状态，直到蓝本注册到程序上后，路由才真正成为程序
+的一部分。使用位于全局作用域中的蓝本时，定义路由的方法几乎和单脚本程序一样。
+和程序一样，蓝本可以在单个文件中定义，也可使用更结构化的方式在包中的多个模块中
+创建。为了获得最大的灵活性，程序包中创建了一个子包，用于保存蓝本。示例7-4 是这
+个子包的构造文件，蓝本就创建于此。
+
+示例7-4　app/main/__init__.py：创建蓝本
+from flask import Blueprint
+main = Blueprint('main', __name__)
+from . import views, errors
+
+通过实例化一个Blueprint 类对象可以创建蓝本。这个构造函数有两个必须指定的参数：
+蓝本的名字和蓝本所在的包或模块。和程序一样，大多数情况下第二个参数使用Python 的
+__name__ 变量即可。
+
+程序的路由保存在包里的app/main/views.py 模块中，而错误处理程序保存在app/main/
+errors.py 模块中。导入这两个模块就能把路由和错误处理程序与蓝本关联起来。注意，这
+些模块在app/main/__init__.py 脚本的末尾导入，这是为了避免循环导入依赖，因为在
+views.py 和errors.py 中还要导入蓝本main。
+
+蓝本在工厂函数create_app() 中注册到程序上，如示例7-5 所示。
+示例7-5　app/_init_.py：注册蓝本
+def create_app(config_name):
+# ...
+from .main import main as main_blueprint
+app.register_blueprint(main_blueprint)
+return app
+示例7-6 显示了错误处理程序。
+
+7.4　启动脚本
+顶级文件夹中的manage.py 文件用于启动程序。脚本内容如示例7-8 所示。
+
+示例7-8　manage.py：启动脚本
+#!/usr/bin/env python
+import os
+from app import create_app, db
+from app.models import User, Role
+from flask.ext.script import Manager, Shell
+from flask.ext.migrate import Migrate, MigrateCommand
+app = create_app(os.getenv('FLASK_CONFIG') or 'default')
+manager = Manager(app)
+migrate = Migrate(app, db)
+def make_shell_context():
+    return dict(app=app, db=db, User=User, Role=Role)
+manager.add_command("shell", Shell(make_context=make_shell_context))
+manager.add_command('db', MigrateCommand)
+if __name__ == '__main__':
+    manager.run()
+
+这个脚本先创建程序。如果已经定义了环境变量FLASK_CONFIG,则从中读取配置名；否则
+使用默认配置。然后初始化Flask-Script，Flask-Migrate和为Python shell定义的上下文。
+
+出于便利，脚本中加入了shebang 声明，所以在基于Unix 的操作系统中可以通过./manage.
+py 执行脚本，而不用使用复杂的python manage.py。
+
+7.5　需求文件
+程序中必须包含一个requirements.txt 文件，用于记录所有依赖包及其精确的版本号。如果
+要在另一台电脑上重新生成虚拟环境，这个文件的重要性就体现出来了，例如部署程序时
+使用的电脑。pip 可以使用如下命令自动生成这个文件：
+(venv) $ pip freeze >requirements.txt
+
+如果你要创建这个虚拟环境的完全副本，可以创建一个新的虚拟环境，并在其上运行以下
+命令：
+(venv) $ pip install -r requirements.txt
+当你阅读本书时，该示例requirements.txt 文件中的版本号可能已经过期了。如果愿意，你
+可以试着使用这些包的最新版。如果遇到问题，你可以随时换回这个需求文件中的版本，
+因为这些版本和程序兼容。
+
+7.6　单元测试
+
+import unittest
+from flask import current_app
+from app import create_app, db
+class BasicsTestCase(unittest.TestCase):
+def setUp(self):
+    self.app = create_app('testing')
+    self.app_context = self.app.app_context()
+    self.app_context.push()
+    db.create_all()
+def tearDown(self):
+    db.session.remove()
+    db.drop_all()
+    self.app_context.pop()
+def test_app_exists(self):
+    self.assertFalse(current_app is None)
+
+def test_app_is_testing(self):
+    self.assertTrue(current_app.config['TESTING'])
+
+这个测试使用Python 标准库中的unittest 包编写。setUp() 和tearDown() 方法分别在各
+测试前后运行，并且名字以test_ 开头的函数都作为测试执行。
+
+setUp() 方法尝试创建一个测试环境，类似于运行中的程序。首先，使用测试配置创建程
+序，然后激活上下文。这一步的作用是确保能在测试中使用current_app，像普通请求一
+样。然后创建一个全新的数据库，以备不时之需。数据库和程序上下文在tearDown() 方法
+中删除。
+
+
+7.7　创建数据库
+重组后的程序和单脚本版本使用不同的数据库。
+首选从环境变量中读取数据库的URL，同时还提供了一个默认的SQLite 数据库做备用。3
+种配置环境中的环境变量名和SQLite 数据库文件名都不一样。例如，在开发环境中，数据
+库URL 从环境变量DEV_DATABASE_URL 中读取，如果没有定义这个环境变量，则使用名为
+data-dev.sqlite 的SQLite 数据库。
+不管从哪里获取数据库URL，都要在新数据库中创建数据表。如果使用Flask-Migrate 跟
+踪迁移，可使用如下命令创建数据表或者升级到最新修订版本：
+(venv) $ python manage.py db upgrade
+
+
+
+第八章 用户认证
+
+8.1　Flask的认证扩展
+
+优秀的Python 认证包很多，但没有一个能实现所有功能。本章介绍的认证方案使用了多个
+包，并编写了胶水代码让其良好协作。本章使用的包列表如下。
+• Flask-Login：管理已登录用户的用户会话。
+• Werkzeug：计算密码散列值并进行核对。
+• itsdangerous：生成并核对加密安全令牌。
+除了认证相关的包之外，本章还用到如下常规用途的扩展。
+• Flask-Mail：发送与认证相关的电子邮件。
+• Flask-Bootstrap：HTML 模板。
+• Flask-WTF：Web 表单。
+
+使用Werkzeug实现密码散列
+
+Werkzeug 中的security 模块能够很方便地实现密码散列值的计算。这一功能的实现只需要
+两个函数，分别用在注册用户和验证用户阶段。
+• generate_password_hash(password, method=pbkdf2:sha1, salt_length=8)：这个函数将
+原始密码作为输入，以字符串形式输出密码的散列值，输出的值可保存在用户数据库中。
+method 和salt_length 的默认值就能满足大多数需求。
+• check_password_hash(hash, password)：这个函数的参数是从数据库中取回的密码散列
+值和用户输入的密码。返回值为True 表明密码正确。
+
+import werkzeug
+
+generate_password_hash(password,method=pbkdf2:sha1,salt_length=8)
+
+check_password_hash(hash,password)
+
+
+app.models.py
+
+from werkzeug.security import generate_password_hash,check_password_hash
+
+class User(db.Model):
+    password_hash = db.Column(db.String(128))
+
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute')
+
+    @password.setter
+    def password(self,password):
+        self.password_hash = generate_password_hash(password)
+
+    def verify_password(self,password):
+        return check_password_hash(self.password_hash,password)
+
+计算密码散列值的函数通过名为password 的只写属性实现。设定这个属性的值时，赋值
+方法会调用Werkzeug 提供的generate_password_hash() 函数，并把得到的结果赋值给
+password_hash 字段。如果试图读取password 属性的值，则会返回错误，原因很明显，因
+为生成散列值后就无法还原成原来的密码了。
+
+verify_password 方法接受一个参数（ 即密码）， 将其传给Werkzeug 提供的check_
+password_hash() 函数，和存储在User 模型中的密码散列值进行比对。如果这个方法返回
+True，就表明密码是正确的。
+
+8.4　使用Flask-Login认证用户
+(venv) $ pip install flask-login
+8.4.1　准备用于登录的用户模型
+表8-1　Flask-Login要求实现的用户方法
+方　　法说　　明
+is_authenticated() 如果用户已经登录，必须返回True，否则返回False
+is_active() 如果允许用户登录，必须返回True，否则返回False。如果要禁用账户，可以返回False
+is_anonymous() 对普通用户必须返回False
+get_id() 必须返回用户的唯一标识符，使用Unicode 编码字符串
+
+这4 个方法可以在模型类中作为方法直接实现，不过还有一种更简单的替代方案。Flask-
+Login 提供了一个UserMixin 类，其中包含这些方法的默认实现，且能满足大多数需求。修
+改后的User 模型如示例8-6 所示。
+
+is_authenticated()
+is_active()
+is_anonymous()
+get_id()
+
+示例8-6　app/models.py：修改User 模型，支持用户登录
+from flask.ext.login import UserMixin
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key = True)
+    email = db.Column(db.String(64), unique=True, index=True)
+    username = db.Column(db.String(64), unique=True, index=True)
+    password_hash = db.Column(db.String(128))
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+
+from flask.ext.login import LoginManager
+login_manager = LoginManager()
+login_manager.session_protection = 'strong'
+login_manager.login_view = 'auth.login'
+def create_app(config_name):
+    # ...
+    login_manager.init_app(app)
+    # ...
+
+LoginManager 对象的session_protection 属性可以设为None、'basic' 或'strong'，以提
+供不同的安全等级防止用户会话遭篡改。设为'strong' 时，Flask-Login 会记录客户端IP
+地址和浏览器的用户代理信息，如果发现异动就登出用户。login_view 属性设置登录页面
+的端点。回忆一下，登录路由在蓝本中定义，因此要在前面加上蓝本的名字。
+
+　app/models.py：加载用户的回调函数
+from . import login_manager
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+加载用户的回调函数接收以Unicode 字符串形式表示的用户标识符。如果能找到用户，这
+个函数必须返回用户对象；否则应该返回None。
+
+8.4.2　保护路由
+为了保护路由只让认证用户访问，Flask-Login 提供了一个login_required 修饰器。用法演
+from flask.ext.login import login_required
+@app.route('/secret')
+@login_required
+def secret():
+return 'Only authenticated users are allowed!'
+如果未认证的用户访问这个路由，Flask-Login 会拦截请求，把用户发往登录页面。
+
+8.4.3　添加登录表单
+呈现给用户的登录表单中包含一个用于输入电子邮件地址的文本字段、一个密码字段、一
+个“记住我”复选框和提交按钮。这个表单使用的Flask-WTF 类如示例8-9 所示。
+
+示例8-9　app/auth/forms.py：登录表单
+from flask.ext.wtf import Form
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms.validators import Required, Length, Email
+class LoginForm(Form):
+email = StringField('Email', validators=[Required(), Length(1, 64),
+Email()])
+password = PasswordField('Password', validators=[Required()])
+remember_me = BooleanField('Keep me logged in')
+submit = SubmitField('Log In')
+
+如果密码正确，则调用Flask-Login 中的login_user() 函数，在用户会话中把
+用户标记为已登录。login_user() 函数的参数是要登录的用户，以及可选的“记住我”布
+尔值，“记住我”也在表单中填写。如果值为False，那么关闭浏览器后用户会话就过期
+了，所以下次用户访问时要重新登录。如果值为True，那么会在用户浏览器中写入一个长
+期有效的cookie，使用这个cookie 可以复现用户会话。
+
+8.4.5　登出用户
+退出路由的实现如示例8-13 所示。
+示例8-13　app/auth/views.py：退出路由
+from flask.ext.login import logout_user, login_required
+@auth.route('/logout')
+@login_required
+def logout():
+logout_user()
+flash('You have been logged out.')
+return redirect(url_for('main.index'))
+
+为了登出用户，这个视图函数调用Flask-Login 中的logout_user() 函数，删除并重设用户
+会话。随后会显示一个Flash 消息，确认这次操作，再重定向到首页，这样登出就完成了。
+
+8.4.6　测试登录
+为验证登录功能可用，可以更新首页，使用已登录用户的名字显示一个欢迎消息。模板中
+生成欢迎消息的部分如示例8-14 所示。
+示例8-14　app/templates/index.html：为已登录的用户显示一个欢迎消息
+Hello,
+{% if current_user.is_authenticated() %}
+{{ current_user.username }}
+{% else %}
+Stranger
+{% endif %}!
+
+current_user.is_authenticated()
+
+8.5.1　添加用户注册表单
+
+from flask.ext.wtf import Form
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms.validators import Required, Length, Email, Regexp, EqualTo
+from wtforms import ValidationError
+from ..models import User
+class RegistrationForm(Form):
+    email = StringField('Email', validators=[Required(), Length(1, 64),
+    Email()])
+    username = StringField('Username', validators=[
+    Required(), Length(1, 64), Regexp('^[A-Za-z][A-Za-z0-9_.]*$', 0,
+    'Usernames must have only letters, '
+    'numbers, dots or underscores')])
+    password = PasswordField('Password', validators=[
+    Required(), EqualTo('password2', message='Passwords must match.')])
+    password2 = PasswordField('Confirm password', validators=[Required()])
+    submit = SubmitField('Register')
+def validate_email(self, field):
+    if User.query.filter_by(email=field.data).first():
+        raise ValidationError('Email already registered.')
+def validate_username(self, field):
+    if User.query.filter_by(username=field.data).first():
+        raise ValidationError('Username already in use.')
+
+
+这个表单使用WTForms 提供的Regexp 验证函数，确保username 字段只包含字母、数字、
+下划线和点号。这个验证函数中正则表达式后面的两个参数分别是正则表达式的旗标和验
+证失败时显示的错误消息。
+
+
+8.5.2　注册新用户
+处理用户注册的过程没有什么难以理解的地方。提交注册表单，通过验证后，系统就使用
+用户填写的信息在数据库中添加一个新用户。处理这个任务的视图函数如示例8-17 所示。
+示例8-17　app/auth/views.py：用户注册路由
+@auth.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(email=form.email.data,
+                    username=form.username.data,
+                    password=form.password.data)
+    db.session.add(user)
+    flash('You can now login.')
+    return redirect(url_for('auth.login'))
+    return render_template('auth/register.html', form=form)
+
+8.6　确认账户
+对于某些特定类型的程序，有必要确认注册时用户提供的信息是否正确。常见要求是能通
+过提供的电子邮件地址与用户取得联系。
+为验证电子邮件地址，用户注册后，程序会立即发送一封确认邮件。新账户先被标记成待
+确认状态，用户按照邮件中的说明操作后，才能证明自己可以被联系上。账户确认过程
+中，往往会要求用户点击一个包含确认令牌的特殊URL 链接。
+
+8.6.1　使用itsdangerous生成确认令牌
+确认邮件中最简单的确认链接是http://www.example.com/auth/confirm/<id> 这种形式的
+URL，其中id 是数据库分配给用户的数字id。用户点击链接后，处理这个路由的视图函
+数就将收到的用户id 作为参数进行确认，然后将用户状态更新为已确认。
+但这种实现方式显然不是很安全，只要用户能判断确认链接的格式，就可以随便指定URL
+中的数字，从而确认任意账户。解决方法是把URL 中的id 换成将相同信息安全加密后得
+到的令牌。
+回忆一下我们在第4 章对用户会话的讨论，Flask 使用加密的签名cookie 保护用户会话，
+防止被篡改。这种安全的cookie 使用itsdangerous 包签名。同样的方法也可用于确认令
+牌上。
+下面这个简短的shell 会话显示了如何使用itsdangerous 包生成包含用户id 的安全令牌：
+(venv) $ python manage.py shell
+>>> from manage import app
+>>> from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+用户认证 ｜ 91
+>>> s = Serializer(app.config['SECRET_KEY'], expires_in = 3600)
+>>> token = s.dumps({ 'confirm': 23 })
+>>> token
+'eyJhbGciOiJIUzI1NiIsImV4cCI6MTM4MTcxODU1OCwiaWF0IjoxMzgxNzE0OTU4fQ.ey ...'
+>>> data = s.loads(token)
+>>> data
+{u'confirm': 23}
+
+itsdangerous 提供了多种生成令牌的方法。其中，TimedJSONWebSignatureSerializer 类生成
+具有过期时间的JSON Web 签名（JSON Web Signatures，JWS）。这个类的构造函数接收
+的参数是一个密钥，在Flask 程序中可使用SECRET_KEY 设置。
+dumps() 方法为指定的数据生成一个加密签名，然后再对数据和签名进行序列化，生成令
+牌字符串。expires_in 参数设置令牌的过期时间，单位为秒。
+为了解码令牌，序列化对象提供了loads() 方法，其唯一的参数是令牌字符串。这个方法
+会检验签名和过期时间，如果通过，返回原始数据。如果提供给loads() 方法的令牌不正
+确或过期了，则抛出异常。
+
+我们可以将这种生成和检验令牌的功能可添加到User 模型中。改动如示例8-18 所示。
+
+app/models.py：确认用户账户
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from flask import current_app
+from . import db
+class User(UserMixin, db.Model):
+# ...
+confirmed = db.Column(db.Boolean, default=False)
+def generate_confirmation_token(self, expiration=3600):
+s = Serializer(current_app.config['SECRET_KEY'], expiration)
+return s.dumps({'confirm': self.id})
+def confirm(self, token):
+s = Serializer(current_app.config['SECRET_KEY'])
+try:
+data = s.loads(token)
+except:
+return False
+if data.get('confirm') != self.id:
+return False
+    self.confirmed = True
+    db.session.add(self)
+return True
+
+generate_confirmation_token() 方法生成一个令牌，有效期默认为一小时。confirm() 方
+法检验令牌，如果检验通过，则把新添加的confirmed 属性设为True。
+除了检验令牌，confirm() 方法还检查令牌中的id 是否和存储在current_user 中的已登录
+用户匹配。如此一来，即使恶意用户知道如何生成签名令牌，也无法确认别人的账户。
+
+由于模型中新加入了一个列用来保存账户的确认状态，因此要生成并执行一
+个新数据库迁移。
+
+itsdangerous 提供了多种生成令牌的方法。其中，TimedJSONWebSignatureSerializer 类生成
+具有过期时间的JSON Web 签名（JSON Web Signatures，JWS）。这个类的构造函数接收
+的参数是一个密钥，在Flask 程序中可使用SECRET_KEY 设置。
+
+dumps() 方法为指定的数据生成一个加密签名，然后再对数据和签名进行序列化，生成令
+牌字符串。expires_in 参数设置令牌的过期时间，单位为秒。
+为了解码令牌，序列化对象提供了loads() 方法，其唯一的参数是令牌字符串。这个方法
+会检验签名和过期时间，如果通过，返回原始数据。如果提供给loads() 方法的令牌不正
+确或过期了，则抛出异常。
+
+@auth.route('/confirm/<token>')
+
+
+
+第九章
+用户角色
+
+app/models.py
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = db.Column(db.Integer,primary_key=True)
+    name = db.Column(db.String(64),unique=True)
+    default = db.Column(db.Boolean,default=False,index=True)
+    permissions = db.Column(db.Integer)
+    users = db.relationship('User',backref='role',lazy='dynamic')
+
+
+app/models.py  权限常量
+class Permission:
+    Follow  = 0x01
+    COMMENT = 0x02
+    WRITE_ARTICLES = 0x04
+    MODERATE_COMMENTS = 0x08
+    ADMINISTER = 0x80
+
+使用权限组织角色，这一做法让你以后添加新角色时只需使用不同的权限组合即可。
+将角色手动添加到数据库中既耗时又容易出错。作为替代，我们要在Role类中添加一个类方法，完成这个操作
+
+class Role(db.Model):
+    #...
+    @staticmethod
+    def insert_roles():
+        roles = {
+            'User':(Permission.FOLLOW | Permission.COMMENT | Permission.WRITE_ARTICLES,True)
+            'Moderrate': (Per)
+
+        }
+
 
 
 
